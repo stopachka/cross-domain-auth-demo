@@ -35,6 +35,7 @@ function initAuthBridge() {
   }
 
   const handleMessage = (event: MessageEvent) => {
+    console.log("[satellite] got message", event);
     if (event.origin !== AUTH_GATE_ORIGIN) {
       return;
     }

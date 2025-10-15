@@ -19,10 +19,9 @@ function Page() {
     }
     const unsub = db.core.subscribeAuth((auth) => {
       const token = auth.user?.refresh_token;
-      window.parent.postMessage(
-        { type: "instant-auth", refreshToken: token },
-        parentOrigin,
-      );
+      const msg = { type: "instant-auth", refreshToken: token };
+      console.log("[origin] send msg", msg);
+      window.parent.postMessage(msg, parentOrigin);
     });
     return unsub;
   }, []);
