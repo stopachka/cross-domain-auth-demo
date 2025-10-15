@@ -1,169 +1,155 @@
 "use client";
 
+import { FormEvent, useRef, useState } from "react";
 import { db } from "@/lib/db";
-import { type AppSchema } from "@/instant.schema";
-import { id, InstaQLEntity } from "@instantdb/react";
 
-type Todo = InstaQLEntity<AppSchema, "todos">;
-
-const room = db.room("todos");
-
-function App() {
-  // Read Data
-  const { isLoading, error, data } = db.useQuery({ todos: {} });
-  const { peers } = db.rooms.usePresence(room);
-  const numUsers = 1 + Object.keys(peers).length;
-  if (isLoading) {
-    return;
-  }
-  if (error) {
-    return <div className="text-red-500 p-4">Error: {error.message}</div>;
-  }
-  const { todos } = data;
+function Page() {
   return (
-    <div className="font-mono min-h-screen flex justify-center items-center flex-col space-y-4">
-      <div className="text-xs text-gray-500">
-        Number of users online: {numUsers}
-      </div>
-      <h2 className="tracking-wide text-5xl text-gray-300">todos</h2>
-      <div className="border border-gray-300 max-w-xs w-full">
-        <TodoForm todos={todos} />
-        <TodoList todos={todos} />
-        <ActionBar todos={todos} />
-      </div>
-      <div className="text-xs text-center">
-        Open another tab to see todos update in realtime!
-      </div>
-    </div>
+    <>
+      <db.SignedIn>
+        <SignedIn />
+      </db.SignedIn>
+      <db.SignedOut>
+        <Login />
+      </db.SignedOut>
+    </>
   );
 }
 
-// Write Data
-// ---------
-function addTodo(text: string) {
-  db.transact(
-    db.tx.todos[id()].update({
-      text,
-      done: false,
-      createdAt: Date.now(),
-    }),
-  );
-}
+function SignedIn() {
+  const user = db.useUser();
 
-function deleteTodo(todo: Todo) {
-  db.transact(db.tx.todos[todo.id].delete());
-}
-
-function toggleDone(todo: Todo) {
-  db.transact(db.tx.todos[todo.id].update({ done: !todo.done }));
-}
-
-function deleteCompleted(todos: Todo[]) {
-  const completed = todos.filter((todo) => todo.done);
-  const txs = completed.map((todo) => db.tx.todos[todo.id].delete());
-  db.transact(txs);
-}
-
-function toggleAll(todos: Todo[]) {
-  const newVal = !todos.every((todo) => todo.done);
-  db.transact(
-    todos.map((todo) => db.tx.todos[todo.id].update({ done: newVal })),
-  );
-}
-
-// Components
-// ----------
-function ChevronDownIcon() {
   return (
-    <svg viewBox="0 0 20 20">
-      <path
-        d="M5 8 L10 13 L15 8"
-        stroke="currentColor"
-        fill="none"
-        strokeWidth="2"
+    <main className="flex min-h-screen flex-col items-center justify-center space-y-6 px-4 text-center">
+      <h1 className="text-3xl font-semibold">Welcome to the origin site</h1>
+      <p className="text-gray-600">
+        You are signed in as <span className="font-medium">{user.email}</span>.
+      </p>
+      <p className="text-gray-600">
+        Step 1 is done—head over to the satellite site to keep going.
+      </p>
+      <button
+        onClick={() => db.auth.signOut()}
+        className="rounded bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
+      >
+        Sign out
+      </button>
+    </main>
+  );
+}
+
+function Login() {
+  const [sentEmail, setSentEmail] = useState("");
+
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center px-4">
+      <div className="w-full max-w-sm space-y-6">
+        <header className="space-y-2 text-center">
+          <h1 className="text-3xl font-semibold">
+            Welcome to the origin site
+          </h1>
+          <p className="text-gray-600">
+            Step 1: log in here, then head to the satellite site.
+          </p>
+        </header>
+        {!sentEmail ? (
+          <EmailStep onSendEmail={setSentEmail} />
+        ) : (
+          <CodeStep sentEmail={sentEmail} />
+        )}
+      </div>
+    </main>
+  );
+}
+
+function EmailStep({ onSendEmail }: { onSendEmail: (email: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const inputEl = inputRef.current!;
+    const email = inputEl.value.trim();
+    if (!email) {
+      return;
+    }
+    onSendEmail(email);
+    db.auth.sendMagicCode({ email }).catch((err) => {
+      alert("Uh oh :" + err.body?.message);
+      onSendEmail("");
+    });
+  };
+
+  return (
+    <form
+      key="email"
+      onSubmit={handleSubmit}
+      className="flex flex-col space-y-4"
+    >
+      <label className="text-left text-sm font-semibold text-gray-700">
+        Email address
+      </label>
+      <input
+        ref={inputRef}
+        type="email"
+        className="w-full border border-gray-300 px-3 py-2"
+        placeholder="you@example.com"
+        required
+        autoFocus
       />
-    </svg>
-  );
-}
-
-function TodoForm({ todos }: { todos: Todo[] }) {
-  return (
-    <div className="flex items-center h-10 border-b border-gray-300">
       <button
-        className="h-full px-2 border-r border-gray-300 flex items-center justify-center"
-        onClick={() => toggleAll(todos)}
+        type="submit"
+        className="w-full rounded bg-blue-600 px-3 py-2 font-semibold text-white hover:bg-blue-700"
       >
-        <div className="w-5 h-5">
-          <ChevronDownIcon />
-        </div>
+        Send code
       </button>
-      <form
-        className="flex-1 h-full"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const input = e.currentTarget.input as HTMLInputElement;
-          addTodo(input.value);
-          input.value = "";
-        }}
-      >
-        <input
-          className="w-full h-full px-2 outline-none bg-transparent"
-          autoFocus
-          placeholder="What needs to be done?"
-          type="text"
-          name="input"
-        />
-      </form>
-    </div>
+    </form>
   );
 }
 
-function TodoList({ todos }: { todos: Todo[] }) {
-  return (
-    <div className="divide-y divide-gray-300">
-      {todos.map((todo) => (
-        <div key={todo.id} className="flex items-center h-10">
-          <div className="h-full px-2 flex items-center justify-center">
-            <div className="w-5 h-5 flex items-center justify-center">
-              <input
-                type="checkbox"
-                className="cursor-pointer"
-                checked={todo.done}
-                onChange={() => toggleDone(todo)}
-              />
-            </div>
-          </div>
-          <div className="flex-1 px-2 overflow-hidden flex items-center">
-            {todo.done ? (
-              <span className="line-through">{todo.text}</span>
-            ) : (
-              <span>{todo.text}</span>
-            )}
-          </div>
-          <button
-            className="h-full px-2 flex items-center justify-center text-gray-300 hover:text-gray-500"
-            onClick={() => deleteTodo(todo)}
-          >
-            X
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
+function CodeStep({ sentEmail }: { sentEmail: string }) {
+  const inputRef = useRef<HTMLInputElement>(null);
 
-function ActionBar({ todos }: { todos: Todo[] }) {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const inputEl = inputRef.current!;
+    const code = inputEl.value.trim();
+    if (!code) {
+      return;
+    }
+    db.auth
+      .signInWithMagicCode({ email: sentEmail, code })
+      .catch((err) => {
+        inputEl.value = "";
+        alert("Uh oh :" + err.body?.message);
+      });
+  };
+
   return (
-    <div className="flex justify-between items-center h-10 px-2 text-xs border-t border-gray-300">
-      <div>Remaining todos: {todos.filter((todo) => !todo.done).length}</div>
+    <form
+      key="code"
+      onSubmit={handleSubmit}
+      className="flex flex-col space-y-4"
+    >
+      <label className="text-left text-sm font-semibold text-gray-700">
+        Enter the code we sent to{" "}
+        <span className="font-medium">{sentEmail}</span>
+      </label>
+      <input
+        ref={inputRef}
+        type="text"
+        className="w-full border border-gray-300 px-3 py-2"
+        placeholder="123456"
+        required
+        autoFocus
+      />
       <button
-        className=" text-gray-300 hover:text-gray-500"
-        onClick={() => deleteCompleted(todos)}
+        type="submit"
+        className="w-full rounded bg-blue-600 px-3 py-2 font-semibold text-white hover:bg-blue-700"
       >
-        Delete Completed
+        Verify code
       </button>
-    </div>
+    </form>
   );
 }
 
-export default App;
+export default Page;
