@@ -3,18 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/lib/db";
 
-const DEFAULT_ALLOWED_ORIGINS = [
-  "https://satellite.vercel.app",
-  "http://localhost:3015",
-];
-
-const ALLOWED_PARENT_ORIGINS = (
-  process.env.NEXT_PUBLIC_SATELLITE_ORIGINS ??
-  DEFAULT_ALLOWED_ORIGINS.join(",")
-)
-  .split(",")
-  .map((value) => value.trim())
-  .filter(Boolean);
+const SATELLITE_ORIGIN = process.env.NEXT_PUBLIC_SATELLITE_ORIGIN!;
+if (!SATELLITE_ORIGIN) {
+  throw new Error("Oi, please set NEXT_PUBLIC_SATELLITE_ORIGIN");
+}
 
 type GateState = "checking" | "ready" | "denied";
 
@@ -42,7 +34,7 @@ function Page() {
 
     try {
       const parentOrigin = new URL(referrer).origin;
-      if (ALLOWED_PARENT_ORIGINS.includes(parentOrigin)) {
+      if (SATELLITE_ORIGIN === parentOrigin) {
         setAuthorizedOrigin(parentOrigin);
         setGateState("ready");
       } else {
@@ -120,7 +112,9 @@ function Page() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md rounded border border-gray-200 bg-white p-6 text-center shadow-sm">
-        <h1 className="text-lg font-semibold text-gray-900">Origin Auth Gate</h1>
+        <h1 className="text-lg font-semibold text-gray-900">
+          Origin Auth Gate
+        </h1>
         <p className="mt-3 text-sm text-gray-600">{message}</p>
       </div>
     </main>

@@ -3,18 +3,10 @@
 import { FormEvent, useRef, useState } from "react";
 import { db } from "@/lib/db";
 
-const SATELLITE_URL = (() => {
-  const configuredOrigins =
-    process.env.NEXT_PUBLIC_SATELLITE_ORIGINS?.split(",") ?? [];
-  const trimmedOrigins = configuredOrigins
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-  return (
-    trimmedOrigins.find((origin) => origin.startsWith("https://")) ??
-    trimmedOrigins[0] ??
-    "https://cross-domain-satellite.vercel.app"
-  );
-})();
+const SATELLITE_ORIGIN = process.env.NEXT_PUBLIC_SATELLITE_ORIGIN!;
+if (!SATELLITE_ORIGIN) {
+  throw new Error("Oi, please set NEXT_PUBLIC_SATELLITE_ORIGIN");
+}
 
 function Page() {
   return (
@@ -40,12 +32,12 @@ function SignedIn() {
       </p>
       <p className="text-gray-600">
         <a
-          href={SATELLITE_URL}
+          href={SATELLITE_ORIGIN}
           target="_blank"
           rel="noreferrer"
           className="font-semibold text-blue-600 hover:text-blue-700"
         >
-          Now visit this page: {SATELLITE_URL}
+          Now visit this page: {SATELLITE_ORIGIN}
         </a>
       </p>
       <button
@@ -65,9 +57,7 @@ function Login() {
     <main className="flex min-h-screen flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm space-y-6">
         <header className="space-y-2 text-center">
-          <h1 className="text-3xl font-semibold">
-            Welcome to the origin site
-          </h1>
+          <h1 className="text-3xl font-semibold">Welcome to the origin site</h1>
           <p className="text-gray-600">
             Log in here, then head to the satellite site.
           </p>
@@ -136,12 +126,10 @@ function CodeStep({ sentEmail }: { sentEmail: string }) {
     if (!code) {
       return;
     }
-    db.auth
-      .signInWithMagicCode({ email: sentEmail, code })
-      .catch((err) => {
-        inputEl.value = "";
-        alert("Uh oh :" + err.body?.message);
-      });
+    db.auth.signInWithMagicCode({ email: sentEmail, code }).catch((err) => {
+      inputEl.value = "";
+      alert("Uh oh :" + err.body?.message);
+    });
   };
 
   return (
