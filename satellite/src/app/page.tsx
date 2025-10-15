@@ -7,14 +7,13 @@ const AUTH_GATE_URL = process.env.NEXT_PUBLIC_ORIGIN_AUTH_GATE_URL!;
 const AUTH_GATE_ORIGIN = new URL(AUTH_GATE_URL).origin;
 
 let bridgeInitialized = false;
-let lastReceivedToken: string | null = null;
-
 function initAuthBridge() {
   if (bridgeInitialized || typeof window === "undefined") {
     return;
   }
   bridgeInitialized = true;
 
+  // 1. Create a little iframe to the origin.
   const mountIframe = () => {
     if (document.querySelector('iframe[data-auth-gate="true"]')) {
       return;
@@ -46,33 +45,14 @@ function initAuthBridge() {
     }
 
     const { refreshToken } = payload as {
-      refreshToken?: unknown;
+      refreshToken?: string;
     };
 
-    if (refreshToken === null) {
-      if (lastReceivedToken !== null) {
-        lastReceivedToken = null;
-        db.auth.signOut().catch((err) => {
-          console.error("Instant satellite: failed to sign out.", err);
-        });
-      }
-      return;
+    if (refreshToken) {
+      db.auth.signInWithToken(refreshToken);
+    } else {
+      db.auth.signOut();
     }
-
-    if (typeof refreshToken !== "string" || refreshToken.length === 0) {
-      return;
-    }
-
-    if (lastReceivedToken === refreshToken) {
-      return;
-    }
-
-    lastReceivedToken = refreshToken;
-
-    db.auth.signInWithToken(refreshToken).catch((err) => {
-      console.error("Instant satellite: failed to sign in with token.", err);
-      lastReceivedToken = null;
-    });
   };
 
   window.addEventListener("message", handleMessage);
@@ -84,22 +64,10 @@ if (typeof window !== "undefined") {
 
 function Page() {
   const auth = db.useAuth();
+  if (auth.isLoading) return null;
 
-  let statusContent: ReactNode = "Not logged in.";
-  if (auth.isLoading) {
-    statusContent = "Checking login status...";
-  } else if (auth.error) {
-    statusContent = `Auth error: ${auth.error.message}`;
-  } else if (auth.user) {
-    statusContent = (
-      <>
-        Logged in as{" "}
-        <span className="font-semibold text-green-600">
-          {auth.user.email ?? "anonymous user"}
-        </span>
-        .
-      </>
-    );
+  if (auth.error) {
+    return <div>Auth error: ${auth.error.message}</div>;
   }
 
   return (
@@ -108,7 +76,18 @@ function Page() {
         <h1 className="text-3xl font-semibold text-gray-900">
           Welcome to the satellite site
         </h1>
-        <p className="text-gray-600">{statusContent}</p>
+        <p className="text-gray-600">
+          {auth.user ? (
+            <>
+              Logged in as{" "}
+              <span className="font-semibold text-green-600">
+                {auth.user.email}
+              </span>
+            </>
+          ) : (
+            <>Not logged in.</>
+          )}
+        </p>
         <p className="text-sm text-gray-500">
           We listen for tokens from the origin auth gate iframe and sign in when
           they arrive.
