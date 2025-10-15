@@ -26,7 +26,7 @@ function SignedIn() {
         You are signed in as <span className="font-medium">{user.email}</span>.
       </p>
       <p className="text-gray-600">
-        Step 1 is done—head over to the satellite site to keep going.
+        Head over to the satellite site to keep going.
       </p>
       <button
         onClick={() => db.auth.signOut()}
@@ -49,7 +49,7 @@ function Login() {
             Welcome to the origin site
           </h1>
           <p className="text-gray-600">
-            Step 1: log in here, then head to the satellite site.
+            Log in here, then head to the satellite site.
           </p>
         </header>
         {!sentEmail ? (
