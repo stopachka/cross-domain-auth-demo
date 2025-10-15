@@ -3,6 +3,19 @@
 import { FormEvent, useRef, useState } from "react";
 import { db } from "@/lib/db";
 
+const SATELLITE_URL = (() => {
+  const configuredOrigins =
+    process.env.NEXT_PUBLIC_SATELLITE_ORIGINS?.split(",") ?? [];
+  const trimmedOrigins = configuredOrigins
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  return (
+    trimmedOrigins.find((origin) => origin.startsWith("https://")) ??
+    trimmedOrigins[0] ??
+    "https://cross-domain-satellite.vercel.app"
+  );
+})();
+
 function Page() {
   return (
     <>
@@ -26,7 +39,14 @@ function SignedIn() {
         You are signed in as <span className="font-medium">{user.email}</span>.
       </p>
       <p className="text-gray-600">
-        Head over to the satellite site to keep going.
+        <a
+          href={SATELLITE_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="font-semibold text-blue-600 hover:text-blue-700"
+        >
+          Now visit this page: {SATELLITE_URL}
+        </a>
       </p>
       <button
         onClick={() => db.auth.signOut()}
