@@ -3,17 +3,8 @@
 import type { ReactNode } from "react";
 import { db } from "@/lib/db";
 
-const DEFAULT_AUTH_GATE_URL = "http://localhost:3010/auth-gate";
-const AUTH_GATE_URL =
-  process.env.NEXT_PUBLIC_ORIGIN_AUTH_GATE_URL ?? DEFAULT_AUTH_GATE_URL;
-
-const AUTH_GATE_ORIGIN = (() => {
-  try {
-    return new URL(AUTH_GATE_URL).origin;
-  } catch {
-    return null;
-  }
-})();
+const AUTH_GATE_URL = process.env.NEXT_PUBLIC_ORIGIN_AUTH_GATE_URL!;
+const AUTH_GATE_ORIGIN = new URL(AUTH_GATE_URL).origin;
 
 let bridgeInitialized = false;
 let lastReceivedToken: string | null = null;
@@ -23,15 +14,6 @@ function initAuthBridge() {
     return;
   }
   bridgeInitialized = true;
-
-  if (!AUTH_GATE_ORIGIN) {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn(
-        "Instant satellite: unable to parse auth gate origin. Set NEXT_PUBLIC_ORIGIN_AUTH_GATE_URL.",
-      );
-    }
-    return;
-  }
 
   const mountIframe = () => {
     if (document.querySelector('iframe[data-auth-gate="true"]')) {
